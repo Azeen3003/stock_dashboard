@@ -18,12 +18,20 @@ ticker = st.sidebar.text_input('Ticker')
 start_date = st.sidebar.date_input('Start Date')
 end_date = st.sidebar.date_input('End Date')
 
-if not ticker:
-   st.subheader('Please input your stock ticker symbol in the sidebar and select the date range.') 
-   st.text('Note: START DATE AND END DATE CANNOT BE THE SAME')
+if not ticker.strip():
+    st.error("Ticker cannot be empty. Please enter a valid stock symbol.")
+
+elif start_date >= end_date:
+    st.error("Start date must be earlier than end date.")
 
 else:
-    data = yf.download(ticker, start = start_date, end = end_date)
+    try:
+        data = yf.download(ticker, start=start_date, end=end_date)
+        if data.empty:
+            st.error("No data available for this ticker or date range.")
+    except Exception as e:
+        st.error("Failed to retrieve data. Please try again later.")
+
     figure = px.line(data, x = data.index, y = data['Adj Close'], title = ticker)
     st.plotly_chart(figure)
 
@@ -43,41 +51,60 @@ else:
     with fundamental_data:
        key = os.getenv('ALPHAVANTAGE_API_KEY')
        fd_api = FundamentalData(key, output_format='pandas')
-       st.subheader('Balance Sheet')
-       balance_sheet = fd_api.get_balance_sheet_annual(symbol=ticker)[0]
-       bs = balance_sheet.T[2:]
-       bs.columns = list(balance_sheet.T.iloc[0])
-       st.write(bs)
-       st.subheader('Income Statement')
-       income_statement = fd_api.get_income_statement_annual(symbol=ticker)[0]
-       is1 = income_statement.T[2:]
-       is1.columns = list(income_statement.T.iloc[0])
-       st.write(is1)
-       st.subheader('Cash Flow Statement')
-       cash_flow = fd_api.get_cash_flow_annual(symbol=ticker)[0]
-       cf = cash_flow.T[2:]
-       cf.columns = list(cash_flow.T.iloc[0])
-       st.write(cf)
+       
+       try:
+           st.subheader('Balance Sheet')
+           balance_sheet = fd_api.get_balance_sheet_annual(symbol=ticker)[0]
+           bs = balance_sheet.T[2:]
+           bs.columns = list(balance_sheet.T.iloc[0])
+           st.write(bs)
+           st.subheader('Income Statement')
+           income_statement = fd_api.get_income_statement_annual(symbol=ticker)[0]
+           is1 = income_statement.T[2:]
+           is1.columns = list(income_statement.T.iloc[0])
+           st.write(is1)
+           st.subheader('Cash Flow Statement')
+           cash_flow = fd_api.get_cash_flow_annual(symbol=ticker)[0]
+           cf = cash_flow.T[2:]
+           cf.columns = list(cash_flow.T.iloc[0])
+           st.write(cf)
+
+       except ValueError as e:
+           if "API call frequency" in str(e):
+               st.error("API call limit reached. Please try again later or upgrade your API plan.")
+               # Fallback to cached or alternative data
+           else:
+               st.error(f"An error occurred: {str(e)}")
+       
 
 
     with news:
        st.header(f'News of {ticker}')
-       sn = StockNews(ticker, save_news=False)
-       df_news = sn.read_rss()
-       for i in range(5):
-          st.subheader(f'News {i+1}')
-          st.write(df_news['published'][i])   
-          st.write(df_news['title'][i])
-          st.write(df_news['summary'][i])
-          title_sentiment = df_news['sentiment_title'][i]
-          st.write(f'Title Sentiment: {title_sentiment}') 
-          news_sentiment = df_news['sentiment_summary'][i]
-          st.write(f'News Sentiment: {news_sentiment}')
+       try:
+           sn = StockNews(ticker, save_news=False)
+           df_news = sn.read_rss()
+           for i in range(5):
+              st.subheader(f'News {i+1}')
+              st.write(df_news['published'][i])   
+              st.write(df_news['title'][i])
+              st.write(df_news['summary'][i])
+              title_sentiment = df_news['sentiment_title'][i]
+              st.write(f'Title Sentiment: {title_sentiment}') 
+              news_sentiment = df_news['sentiment_summary'][i]
+              st.write(f'News Sentiment: {news_sentiment}')
+
+       except Exception as e:
+           if "HTTP" in str(e):
+               st.error("News data unavailable due to API limit. Please try again later.")
+               # Fallback logic if needed
+           else:
+               st.error(f"An error occurred: {str(e)}")
+       
 
    
     with prediction:
        st.header(f'Prediction of {ticker}')
-       START = start_date
+       START = '2014-12-03'
        END = end_date
 
        n_years = st.slider('Years of prediction:', 1, 4)
