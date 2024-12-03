@@ -1,4 +1,5 @@
 import os
+import re
 import numpy as np
 import pandas as pd
 import yfinance as yf
@@ -20,6 +21,12 @@ end_date = st.sidebar.date_input('End Date')
 
 if not ticker.strip():
     st.error("Ticker cannot be empty. Please enter a valid stock symbol.")
+    st.stop()
+
+if not re.match(r"^[A-Z.]+$", ticker.strip(), re.IGNORECASE):
+    st.error("Invalid ticker format. Please use valid stock symbols (e.g., AAPL, TSLA).")
+    st.stop()
+
 
 elif start_date >= end_date:
     st.error("Start date must be earlier than end date.")
