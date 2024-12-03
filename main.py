@@ -29,8 +29,10 @@ else:
         data = yf.download(ticker, start=start_date, end=end_date)
         if data.empty:
             st.error("No data available for this ticker or date range.")
+            st.stop()
     except Exception as e:
         st.error("Failed to retrieve data. Please try again later.")
+        st.stop()
 
     figure = px.line(data, x = data.index, y = data['Adj Close'], title = ticker)
     st.plotly_chart(figure)
@@ -55,19 +57,28 @@ else:
        try:
            st.subheader('Balance Sheet')
            balance_sheet = fd_api.get_balance_sheet_annual(symbol=ticker)[0]
-           bs = balance_sheet.T[2:]
-           bs.columns = list(balance_sheet.T.iloc[0])
-           st.write(bs)
+           if balance_sheet.empty:
+             st.warning("Balance sheet data not available.")
+           else: 
+             bs = balance_sheet.T[2:]
+             bs.columns = list(balance_sheet.T.iloc[0])
+             st.write(bs)
            st.subheader('Income Statement')
            income_statement = fd_api.get_income_statement_annual(symbol=ticker)[0]
-           is1 = income_statement.T[2:]
-           is1.columns = list(income_statement.T.iloc[0])
-           st.write(is1)
+           if income_statement.empty:
+              st.warning("Income statement data not available.")
+           else:
+              is1 = income_statement.T[2:]
+              is1.columns = list(income_statement.T.iloc[0])
+              st.write(is1)
            st.subheader('Cash Flow Statement')
            cash_flow = fd_api.get_cash_flow_annual(symbol=ticker)[0]
-           cf = cash_flow.T[2:]
-           cf.columns = list(cash_flow.T.iloc[0])
-           st.write(cf)
+           if cash_flow.empty:
+              st.warning("Cash flow data not available.")
+           else:
+              cf = cash_flow.T[2:]
+              cf.columns = list(cash_flow.T.iloc[0])
+              st.write(cf)
 
        except ValueError as e:
            if "API call frequency" in str(e):
@@ -82,15 +93,19 @@ else:
        try:
            sn = StockNews(ticker, save_news=False)
            df_news = sn.read_rss()
-           for i in range(5):
-              st.subheader(f'News {i+1}')
-              st.write(df_news['published'][i])   
-              st.write(df_news['title'][i])
-              st.write(df_news['summary'][i])
-              title_sentiment = df_news['sentiment_title'][i]
-              st.write(f'Title Sentiment: {title_sentiment}') 
-              news_sentiment = df_news['sentiment_summary'][i]
-              st.write(f'News Sentiment: {news_sentiment}')
+           if df_news.empty:
+               st.warning("No news articles found for this ticker.")
+           else:
+               max_news = min(len(df_news), 5)  # Limit to available news items
+               for i in range(max_news):
+                  st.subheader(f'News {i+1}')
+                  st.write(df_news['published'][i])   
+                  st.write(df_news['title'][i])
+                  st.write(df_news['summary'][i])
+                  title_sentiment = df_news['sentiment_title'][i]
+                  st.write(f'Title Sentiment: {title_sentiment}') 
+                  news_sentiment = df_news['sentiment_summary'][i]
+                  st.write(f'News Sentiment: {news_sentiment}')
 
        except Exception as e:
            if "HTTP" in str(e):
