@@ -72,7 +72,6 @@ else:
        except ValueError as e:
            if "API call frequency" in str(e):
                st.error("API call limit reached. Please try again later or upgrade your API plan.")
-               # Fallback to cached or alternative data
            else:
                st.error(f"An error occurred: {str(e)}")
        
@@ -96,7 +95,6 @@ else:
        except Exception as e:
            if "HTTP" in str(e):
                st.error("News data unavailable due to API limit. Please try again later.")
-               # Fallback logic if needed
            else:
                st.error(f"An error occurred: {str(e)}")
        
