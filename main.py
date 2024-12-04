@@ -59,7 +59,7 @@ else:
        st.write(f'Risk Adj Return is {annual_return/(stdev*100)}')
 
     with fundamental_data:
-       key = 'OFY5QZY831YO4WQV'
+       key = os.getenv("ALPHAVANTAGE_API_KEY")
        fd_api = FundamentalData(key, output_format='pandas')
        
        try:
