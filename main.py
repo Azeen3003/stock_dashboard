@@ -15,6 +15,7 @@ from plotly import graph_objs as go
 load_dotenv()
 
 st.title('Welcome to your Stock Dashboard')
+st.link_button('Don\'t know your stock\'s ticker? Find out here',"https://stockanalysis.com/stocks/")
 ticker = st.sidebar.text_input('Ticker')
 start_date = st.sidebar.date_input('Start Date')
 end_date = st.sidebar.date_input('End Date')
