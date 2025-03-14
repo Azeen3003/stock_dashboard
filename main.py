@@ -1,183 +1,101 @@
 import os
-import re
 import numpy as np
 import pandas as pd
 import yfinance as yf
 import streamlit as st
-import datetime as date
 import plotly.express as px
-from alpha_vantage.fundamentaldata import FundamentalData
 from stocknews import StockNews
 from dotenv import load_dotenv
 from prophet import Prophet
 from prophet.plot import plot_plotly
 from plotly import graph_objs as go
+
+# Load environment variables
 load_dotenv()
-import requests
-
-
-session = requests.Session()
-session.headers.update({'User-Agent': 'Mozilla/5.0'})
 
 st.title('Welcome to your Stock Dashboard')
-st.link_button('Don\'t know your stock\'s ticker? Find out here',"https://stockanalysis.com/stocks/")
-ticker_input = st.sidebar.text_input('Ticker')
-time_period = st.sidebar.select_slider(
-    "Select Time Period",
-    options=["1mo", "3mo", "6mo", "1y", "2y", "5y", "max"],
-    value="6mo"
-)
+ticker = st.sidebar.text_input('Ticker')
+period = st.sidebar.selectbox('Select Time Period', ['1mo', '3mo', '6mo', '1y', '2y', '5y', 'max'])
 
-
-if not ticker_input.strip():
+if not ticker.strip():
     st.error("Ticker cannot be empty. Please enter a valid stock symbol.")
-    st.stop()
-
-if not re.match(r"^[A-Z.]+$", ticker_input.strip(), re.IGNORECASE):
-    st.error("Invalid ticker format. Please use valid stock symbols (e.g., AAPL, TSLA).")
-    st.stop()
-
 else:
     try:
-        ticker = yf.Ticker(ticker_input)
-        data = ticker.history(period="time_period", session=session)
-        if data.empty:
-            st.error("No data available for this ticker or date range.")
-            st.stop()
+       data = yf.Ticker("TSLA").history(period="6mo")
+       if data.empty:
+          raise ValueError("Yahoo Finance returned empty data.")
     except Exception as e:
-        st.error("Failed to retrieve data. Please try again later.")
-        st.stop()
+          print(f"Error fetching data: {e}")
 
-    figure = px.line(data, x = data.index, y = data['Close'].squeeze(), title = ticker)
-    st.plotly_chart(figure)
-
-    pricing_data, fundamental_data, news, prediction = st.tabs(['Pricing Data', 'Fundamental Data', 'News', 'Prediction'])
-
-    with pricing_data:
-       st.header('Price Movements')
-       data2 = data
-       data2['% Change'] = data2['Close'] / data2['Close'].shift(1) - 1
-       st.write(data2)
-       annual_return = data2['% Change'].mean()*252*100
-       st.write(f'Annual Return is {annual_return}%')
-       stdev = np.std(data2['% Change']) * np.sqrt(252)
-       st.write(f'Standard Deviation is {(stdev*100)}%')
-       st.write(f'Risk Adj Return is {annual_return/(stdev*100)}')
-
-    with fundamental_data:
-       key = st.secrets.get("ALPHAVANTAGE_API_KEY", os.getenv("ALPHAVANTAGE_API_KEY"))
-       fd_api = FundamentalData(key, output_format='pandas')
-       
-       try:
-           st.subheader('Balance Sheet')
-           balance_sheet = fd_api.get_balance_sheet_annual(symbol=ticker)[0]
-           if balance_sheet.empty:
-             st.warning("Balance sheet data not available.")
-           else: 
-             bs = balance_sheet.T[2:]
-             bs.columns = list(balance_sheet.T.iloc[0])
-             st.write(bs)
-           st.subheader('Income Statement')
-           income_statement = fd_api.get_income_statement_annual(symbol=ticker)[0]
-           if income_statement.empty:
-              st.warning("Income statement data not available.")
-           else:
-              is1 = income_statement.T[2:]
-              is1.columns = list(income_statement.T.iloc[0])
-              st.write(is1)
-           st.subheader('Cash Flow Statement')
-           cash_flow = fd_api.get_cash_flow_annual(symbol=ticker)[0]
-           if cash_flow.empty:
-              st.warning("Cash flow data not available.")
-           else:
-              cf = cash_flow.T[2:]
-              cf.columns = list(cash_flow.T.iloc[0])
-              st.write(cf)
-
-       except ValueError as e:
-           if "API call frequency" in str(e):
-               st.error("API call limit reached. Please try again later or upgrade your API plan.")
-           else:
-               st.error(f"An error occurred: {str(e)}")
-       
-
-
-    with news:
-       st.header(f'News of {ticker}')
-       try:
-           sn = StockNews(ticker, save_news=False)
-           df_news = sn.read_rss()
-           if df_news.empty:
-               st.warning("No news articles found for this ticker.")
-           else:
-               max_news = min(len(df_news), 5)  # Limit to available news items
-               for i in range(max_news):
-                  st.subheader(f'News {i+1}')
-                  st.write(df_news['published'][i])   
-                  st.write(df_news['title'][i])
-                  st.write(df_news['summary'][i])
-                  title_sentiment = df_news['sentiment_title'][i]
-                  st.write(f'Title Sentiment: {title_sentiment}') 
-                  news_sentiment = df_news['sentiment_summary'][i]
-                  st.write(f'News Sentiment: {news_sentiment}')
-
-       except Exception as e:
-           if "HTTP" in str(e):
-               st.error("News data unavailable due to API limit. Please try again later.")
-           else:
-               st.error(f"An error occurred: {str(e)}")
-       
-
-   
-    with prediction:
-       st.header(f'Prediction of {ticker}')
-       START = '2014-12-03'
-       END = date.today()
-
-       n_years = st.slider('Years of prediction:', 1, 4)
-       period = n_years * 365
-
-       @st.cache_data
-       def load_data(ticker):
-         data = yf.download(ticker, START, END)
-         data.reset_index(inplace=True)
-         return data
-       
-       data_load_state = st.text('Loading data...')
-       data = load_data(ticker)
-       data_load_state.text('Loading data... done!')
-
-       st.subheader('Raw data')
-       st.write(data.tail())
-
-       # Plot raw data
-       def plot_raw_data():
-          fig = go.Figure()
-          fig.add_trace(go.Scatter(x=data['Date'], y=data['Open'], name="stock_open"))
-          fig.add_trace(go.Scatter(x=data['Date'], y=data['Close'], name="stock_close"))
-          fig.layout.update(title_text='Time Series data with Rangeslider', xaxis_rangeslider_visible=True)
-          st.plotly_chart(fig)
-
-       plot_raw_data()
-
-       # Predict forecast with Prophet.
-       df_train = data[['Date','Close']]
-       df_train = df_train.rename(columns={"Date": "ds", "Close": "y"})
-
-       m = Prophet()
-       m.fit(df_train)
-       future = m.make_future_dataframe(periods=period)
-       forecast = m.predict(future)
-
-       # Show and plot forecast
-       st.subheader('Forecast data')
-       st.write(forecast.tail())
-           
-       st.write(f'Forecast plot for {n_years} years')
-       fig1 = plot_plotly(m, forecast)
-       st.plotly_chart(fig1)
-       
-       st.write("Forecast components")
-       fig2 = m.plot_components(forecast)
-       st.write(fig2)
     
+    figure = px.line(data, x=data.index, y=data['Close'].squeeze(), title=f"{ticker} Stock Price")
+    st.plotly_chart(figure)
+    
+    pricing_data, fundamental_data, news, prediction = st.tabs(['Pricing Data', 'Fundamental Data', 'News', 'Prediction'])
+    
+    with pricing_data:
+        st.header('Price Movements')
+        data['% Change'] = data['Close'].pct_change() * 100
+        st.write(data)
+        
+        annual_return = data['% Change'].mean() * 252
+        stdev = np.std(data['% Change']) * np.sqrt(252)
+        st.write(f'Annual Return: {annual_return:.2f}%')
+        st.write(f'Standard Deviation: {stdev:.2f}%')
+        st.write(f'Risk-Adjusted Return: {annual_return/stdev:.2f}')
+    
+    with fundamental_data:
+        st.subheader('Fundamental Data')
+        try:
+            info = stock.info
+            if not info:
+                st.warning("No fundamental data available.")
+            else:
+                st.write(f"**Sector:** {info.get('sector', 'N/A')}")
+                st.write(f"**Industry:** {info.get('industry', 'N/A')}")
+                st.write(f"**Market Cap:** {info.get('marketCap', 'N/A')}")
+                st.write(f"**Revenue:** {info.get('totalRevenue', 'N/A')}")
+                st.write(f"**Net Income:** {info.get('netIncomeToCommon', 'N/A')}")
+                st.write(f"**Dividend Yield:** {info.get('dividendYield', 'N/A')}")
+        except Exception as e:
+            st.error(f"Error fetching fundamental data: {e}")
+    
+    with news:
+        st.header(f'News for {ticker}')
+        try:
+            sn = StockNews(ticker, save_news=False)
+            df_news = sn.read_rss()
+            if df_news.empty:
+                st.warning("No news articles found for this ticker.")
+            else:
+                for i in range(min(5, len(df_news))):
+                    st.subheader(f'News {i+1}')
+                    st.write(df_news['published'][i])
+                    st.write(df_news['title'][i])
+                    st.write(df_news['summary'][i])
+                    st.write(f"Title Sentiment: {df_news['sentiment_title'][i]}")
+                    st.write(f"News Sentiment: {df_news['sentiment_summary'][i]}")
+        except Exception as e:
+            st.error(f"News data unavailable: {e}")
+    
+    with prediction:
+        st.header(f'Prediction for {ticker}')
+        n_years = st.slider('Years of prediction:', 1, 4)
+        period_days = n_years * 365
+        
+        df_train = data[['Close']].reset_index()
+        df_train.rename(columns={"Date": "ds", "Close": "y"}, inplace=True)
+        
+        try:
+            m = Prophet()
+            m.fit(df_train)
+            future = m.make_future_dataframe(periods=period_days)
+            forecast = m.predict(future)
+            
+            st.subheader('Forecast Data')
+            st.write(forecast.tail())
+            
+            fig1 = plot_plotly(m, forecast)
+            st.plotly_chart(fig1)
+        except Exception as e:
+            st.error(f"Prediction model error: {e}")
