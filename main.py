@@ -17,8 +17,12 @@ load_dotenv()
 st.title('Welcome to your Stock Dashboard')
 st.link_button('Don\'t know your stock\'s ticker? Find out here',"https://stockanalysis.com/stocks/")
 ticker = st.sidebar.text_input('Ticker')
-start_date = st.sidebar.date_input('Start Date')
-end_date = st.sidebar.date_input('End Date')
+time_period = st.sidebar.select_slider(
+    "Select Time Period",
+    options=["1mo", "3mo", "6mo", "1y", "2y", "5y", "max"],
+    value="6mo"
+)
+
 
 if not ticker.strip():
     st.error("Ticker cannot be empty. Please enter a valid stock symbol.")
@@ -28,13 +32,9 @@ if not re.match(r"^[A-Z.]+$", ticker.strip(), re.IGNORECASE):
     st.error("Invalid ticker format. Please use valid stock symbols (e.g., AAPL, TSLA).")
     st.stop()
 
-
-elif start_date >= end_date:
-    st.error("Start date must be earlier than end date.")
-
 else:
     try:
-        data = yf.download(ticker, start=start_date, end=end_date)
+        data = yf.download(ticker, period=time_period)
         if data.empty:
             st.error("No data available for this ticker or date range.")
             st.stop()
@@ -42,7 +42,7 @@ else:
         st.error("Failed to retrieve data. Please try again later.")
         st.stop()
 
-    figure = px.line(data, x = data.index, y = data['Adj Close'], title = ticker)
+    figure = px.line(data, x = data.index, y = data['Close'].squeeze(), title = ticker)
     st.plotly_chart(figure)
 
     pricing_data, fundamental_data, news, prediction = st.tabs(['Pricing Data', 'Fundamental Data', 'News', 'Prediction'])
@@ -50,7 +50,7 @@ else:
     with pricing_data:
        st.header('Price Movements')
        data2 = data
-       data2['% Change'] = data2['Adj Close'] / data2['Adj Close'].shift(1) - 1
+       data2['% Change'] = data2['Close'] / data2['Close'].shift(1) - 1
        st.write(data2)
        annual_return = data2['% Change'].mean()*252*100
        st.write(f'Annual Return is {annual_return}%')
