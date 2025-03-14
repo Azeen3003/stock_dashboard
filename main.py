@@ -15,6 +15,9 @@ from plotly import graph_objs as go
 load_dotenv()
 import requests
 
+
+yf.pdr_override()
+
 session = requests.Session()
 session.headers.update({'User-Agent': 'Mozilla/5.0'})
 
