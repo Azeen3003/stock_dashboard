@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from prophet import Prophet
 from prophet.plot import plot_plotly
 from plotly import graph_objs as go
+import matlpotlib.pyplot as plt
 
 # Load environment variables
 load_dotenv()
@@ -28,8 +29,14 @@ else:
           print(f"Error fetching data: {e}")
 
     
-    figure = px.line(data, x=data.index, y=data['Close'].squeeze(), title=f"{ticker} Stock Price")
-    st.plotly_chart(figure)
+    fig, ax = plt.subplots()
+    ax.plot(data.index, data['Close'], label='Stock Price', color='blue')
+    ax.set_xlabel('Date')
+    ax.set_ylabel('Closing Price')
+    ax.set_title(ticker)
+    ax.legend()
+
+    st.pyplot(fig)
     
     pricing_data, fundamental_data, news, prediction = st.tabs(['Pricing Data', 'Fundamental Data', 'News', 'Prediction'])
     
@@ -47,7 +54,7 @@ else:
     with fundamental_data:
         st.subheader('Fundamental Data')
         try:
-            info = stock.info
+            info = ticker.info
             if not info:
                 st.warning("No fundamental data available.")
             else:
