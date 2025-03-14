@@ -34,7 +34,7 @@ if not re.match(r"^[A-Z.]+$", ticker.strip(), re.IGNORECASE):
 
 else:
     try:
-        data = yf.download(ticker, period=time_period)
+        data = yf.Ticker(ticker).history(period=time_period)
         if data.empty:
             st.error("No data available for this ticker or date range.")
             st.stop()
@@ -126,7 +126,7 @@ else:
     with prediction:
        st.header(f'Prediction of {ticker}')
        START = '2014-12-03'
-       END = end_date
+       END = date.today()
 
        n_years = st.slider('Years of prediction:', 1, 4)
        period = n_years * 365
