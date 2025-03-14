@@ -126,7 +126,7 @@ else:
     with prediction:
        st.header(f'Prediction of {ticker}')
        START = '2014-12-03'
-       END = end_date
+       END = date.today()
 
        n_years = st.slider('Years of prediction:', 1, 4)
        period = n_years * 365
