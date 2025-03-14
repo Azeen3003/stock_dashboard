@@ -45,7 +45,7 @@ streamlit run main.py
 
 ## 📎 Project Link
 
-Hosted on Streamlit Cloud: [here](yourstockdashboard.streamlit.app)
+Hosted on Streamlit Cloud: [here](https://yourstockdashboard.streamlit.app)
 
 ## License
 
