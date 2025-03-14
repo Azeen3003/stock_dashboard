@@ -16,14 +16,12 @@ load_dotenv()
 import requests
 
 
-yf.pdr_override()
-
 session = requests.Session()
 session.headers.update({'User-Agent': 'Mozilla/5.0'})
 
 st.title('Welcome to your Stock Dashboard')
 st.link_button('Don\'t know your stock\'s ticker? Find out here',"https://stockanalysis.com/stocks/")
-ticker = st.sidebar.text_input('Ticker')
+ticker_input = st.sidebar.text_input('Ticker')
 time_period = st.sidebar.select_slider(
     "Select Time Period",
     options=["1mo", "3mo", "6mo", "1y", "2y", "5y", "max"],
@@ -31,17 +29,18 @@ time_period = st.sidebar.select_slider(
 )
 
 
-if not ticker.strip():
+if not ticker_input.strip():
     st.error("Ticker cannot be empty. Please enter a valid stock symbol.")
     st.stop()
 
-if not re.match(r"^[A-Z.]+$", ticker.strip(), re.IGNORECASE):
+if not re.match(r"^[A-Z.]+$", ticker_input.strip(), re.IGNORECASE):
     st.error("Invalid ticker format. Please use valid stock symbols (e.g., AAPL, TSLA).")
     st.stop()
 
 else:
     try:
-        data = yf.Ticker(ticker).history(session=session, period=time_period)
+        ticker = yf.Ticker(ticker_input)
+        data = ticker.history(period="time_period", session=session)
         if data.empty:
             st.error("No data available for this ticker or date range.")
             st.stop()
