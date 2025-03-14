@@ -34,7 +34,7 @@ if not re.match(r"^[A-Z.]+$", ticker.strip(), re.IGNORECASE):
 
 else:
     try:
-        data = yf.download(ticker, period=time_period)
+        data = yf.Ticker(ticker).history(period=time_period)
         if data.empty:
             st.error("No data available for this ticker or date range.")
             st.stop()
