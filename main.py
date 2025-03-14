@@ -13,6 +13,10 @@ from prophet import Prophet
 from prophet.plot import plot_plotly
 from plotly import graph_objs as go
 load_dotenv()
+import requests
+
+session = requests.Session()
+session.headers.update({'User-Agent': 'Mozilla/5.0'})
 
 st.title('Welcome to your Stock Dashboard')
 st.link_button('Don\'t know your stock\'s ticker? Find out here',"https://stockanalysis.com/stocks/")
@@ -34,7 +38,7 @@ if not re.match(r"^[A-Z.]+$", ticker.strip(), re.IGNORECASE):
 
 else:
     try:
-        data = yf.Ticker(ticker).history(period=time_period)
+        data = yf.Ticker(ticker).history(session=session, period=time_period)
         if data.empty:
             st.error("No data available for this ticker or date range.")
             st.stop()
